@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -117,7 +118,8 @@ func (a *App) EditNote() error {
 		return err
 	}
 	if pass != "123" {
-		fmt.Println("Не правильно")
+		fmt.Println("Не вернный пароль")
+		err = errors.New("верный 123")
 		return err
 	}
 	id, err := a.IdNoteFull()
