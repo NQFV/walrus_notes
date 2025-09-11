@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (a *App) StopApp() error {
@@ -18,10 +20,11 @@ func (a *App) StopApp() error {
 }
 
 func Read() ([]Note, error) {
-	f, err := os.OpenFile("data.json", os.O_RDONLY, os.ModeAppend)
+	f, err := os.OpenFile("./data.json", os.O_RDONLY, os.ModeAppend)
 	if err != nil {
 		return []Note{}, fmt.Errorf("файл не открыт: %s", err.Error())
 	}
+	defer f.Close()
 	var byteData []byte
 	var items []Note
 	byteData, err = io.ReadAll(f)
@@ -32,17 +35,7 @@ func Read() ([]Note, error) {
 	if err != nil {
 		return []Note{}, fmt.Errorf("данные не взяты: %s", err.Error())
 	}
-	defer f.Close()
 	return items, nil
-}
-
-func (a *App) ReadNote() ([]Note, error) {
-	data, err := Read()
-	if err != nil {
-		return []Note{}, err
-	}
-	a.Notes = data
-	return data, nil
 }
 
 func (a *App) ShowNotes() error {
@@ -54,7 +47,7 @@ func (a *App) ShowNotes() error {
 	return nil
 }
 
-func (a *App) Safe() error {
+func (a *App) Save() error {
 	jsonNote, err := json.Marshal(a.Notes)
 	if err != nil {
 		return fmt.Errorf("данные не в json: %s", err.Error())
@@ -67,12 +60,8 @@ func (a *App) Safe() error {
 }
 
 func (a *App) AddNotes() error {
-	var newId int
-	for _, note := range a.Notes {
-		newId = max(newId, note.Id)
-	}
+	newId := len(a.Notes) + 1
 	newDate := time.Now()
-	newDateStr := newDate.Format("02.01.2006")
 	newName, err := EnterValue("Введи название замтки: ", true)
 	if err != nil {
 		return err
@@ -81,13 +70,9 @@ func (a *App) AddNotes() error {
 	if err != nil {
 		return err
 	}
-	newNote := Note{Id: newId + 1, Name: newName, Date: newDateStr, Text: newText}
+	newNote := Note{Id: newId, Name: newName, Date: newDate, Text: newText}
 	a.Notes = append(a.Notes, newNote)
-	err = a.Safe()
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.Save()
 }
 
 func (a *App) IdNoteFull() (int, error) {
@@ -100,16 +85,13 @@ func (a *App) IdNoteFull() (int, error) {
 		return 0, err
 	}
 	chsNote := a.Notes[result-1]
-	fmt.Printf("%d - %-20s - %s\n%s\n", chsNote.Id, chsNote.Name, chsNote.Date, chsNote.txt(chsNote.Text, 100))
+	fmt.Printf("%d - %-20s - %s\n%s\n", chsNote.Id, chsNote.Name, chsNote.Date.Format("02.01.2006"), chsNote.TextToLine100(chsNote.Text, 100))
 	return result, err
 }
 
 func (a *App) ViewNoteFull() error {
 	_, err := a.IdNoteFull()
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (a *App) EditNote() error {
@@ -117,10 +99,15 @@ func (a *App) EditNote() error {
 	if err != nil {
 		return err
 	}
-	if pass != "123" {
-		fmt.Println("Не вернный пароль")
-		err = errors.New("верный 123")
-		return err
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(a.pass), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("encryption failed")
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPass), []byte(pass))
+	if err != nil {
+		return errors.New("пароль не верный")
+	} else {
+		fmt.Println("\033[32mПароль верный!\033[0m")
 	}
 	id, err := a.IdNoteFull()
 	if err != nil {
@@ -151,14 +138,14 @@ func (a *App) EditNote() error {
 		return err
 	}
 	if date != "" {
-		a.Notes[id-1].Date = date
+		parsetTime, err := time.Parse("02.01.2006", date)
+		if err != nil {
+			panic(err)
+		}
+		a.Notes[id-1].Date = parsetTime
 		fmt.Println("Дата создания изменена!")
 	} else {
 		fmt.Println("Дата создания не изменена!")
 	}
-	err = a.Safe()
-	if err != nil {
-		return err
-	}
-	return nil
+	return a.Save()
 }

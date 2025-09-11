@@ -14,22 +14,33 @@ var funcTable = map[string]menuFunction{
 
 type App struct {
 	Notes []Note
+	pass  string
+}
+
+func NewApp(password string) *App {
+	notes, err := Read()
+	if err != nil {
+		fmt.Print(err)
+	}
+	return &App{Notes: notes, pass: password}
 }
 
 func (a *App) RunApp() {
 	fmt.Println("\033[33mДобро пожаловать \"Записки Ластоногих\"\033[0m")
-	var command string
-	a.ReadNote()
 	for {
 		fmt.Println("----------------------------")
-		command, _ = EnterValue(generateMenu(funcTable), false)
+		command, err := EnterValue(generateMenu(funcTable), false)
+		if err != nil {
+			fmt.Print(err)
+			return
+		}
 		fmt.Println("----------------------------")
 		targetF, ok := funcTable[command]
 		if !ok {
 			fmt.Println("\033[31mКоманда не найдена\033[0m")
 			continue
 		}
-		err := targetF.Function(a)
+		err = targetF.Function(a)
 		if err != nil {
 			fmt.Printf("\033[31mОшибка: %s\n\033[0m", err.Error())
 

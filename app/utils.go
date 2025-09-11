@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type menuFunction struct {
@@ -30,10 +31,10 @@ func (d Note) String() string {
 		strRune = append(strRune[0:17], '.', '.', '.')
 	}
 	str := string(strRune)
-	return fmt.Sprintf("%d - %-20s - %s", d.Id, str, d.Date)
+	return fmt.Sprintf("%d - %-20s - %s", d.Id, str, d.Date.Format("02.01.2006"))
 }
 
-func (n Note) txt(text string, width int) string {
+func (n Note) TextToLine100(text string, width int) string {
 	var result strings.Builder
 	var line []rune
 	words := strings.Fields(text)
@@ -58,18 +59,18 @@ func (n Note) txt(text string, width int) string {
 }
 
 type Note struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-	Date string `json:"date"`
-	Text string `json:"text"`
+	Id   int       `json:"id"`
+	Name string    `json:"name"`
+	Date time.Time `json:"date"`
+	Text string    `json:"text"`
 }
 
-func EnterValue(helpMsg string, flag bool) (string, error) {
+func EnterValue(helpMsg string, resolvingVoid bool) (string, error) {
 	fmt.Print(helpMsg)
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	value := strings.TrimSpace(scanner.Text())
-	if value == "" && !flag {
+	if value == "" && !resolvingVoid {
 		return "", errors.New("значение не может быть пустым")
 	}
 	return value, nil

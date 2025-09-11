@@ -1,8 +1,21 @@
 package main
 
-import "cli/app"
+import (
+	"cli/app"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 func main() {
-	var app app.App
-	app.RunApp()
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
+	pass, exists := os.LookupEnv("PASSWORD")
+	if !exists {
+		log.Fatal("Пароля нет")
+	}
+	jopa := app.NewApp(pass)
+	jopa.RunApp()
 }
